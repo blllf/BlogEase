@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.blllf.blogease.mapper.ArticleMapper">
+    <!--使用 useGeneratedKeys 和 keyProperty 来获取自动生成的主键值-->
+    <insert id="adminAdd" parameterType="com.blllf.blogease.pojo.Article" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO article (title, content, cover_img, state, category_id, create_user, create_time, update_time, deleted)
+        VALUES (#{title}, #{content}, #{coverImg}, #{state}, #{categoryId}, #{createUser}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <select id="list" resultType="com.blllf.blogease.pojo.Article">
+        select * from article
+        <where>
+            <!-- 默认条件：如果用户未指定 deleted，则过滤 deleted != 0 -->
+            <if test="deleted == null">
+                deleted != 0
+            </if>
+            <!-- 如果用户指定了 deleted，则按照用户指定的值筛选 -->
+            <if test="deleted != null">
+                AND deleted = #{deleted}
+            </if>
+            <if test="categoryId != null">
+                category_id = #{categoryId}
+            </if>
+            and create_user = #{uid}
+        </where>
+        order by id DESC
+    </select>
+
+
+    <select id="selectAll" resultType="com.blllf.blogease.pojo.Article">
+        select * from article
+        <where>
+            <if test="categoryId != null">
+                category_id = #{categoryId}
+            </if>
+            <if test="title != null and title != '' ">
+                and title like #{title}
+            </if>
+            <if test="authors != null and authors.size() > 0">
+                AND create_user IN
+                <foreach collection="authors" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="testDate1 != null and testDate1 != '' ">
+                and create_time >= #{testDate1}
+            </if>
+            <if test="testDate2 != null and testDate2 != '' ">
+                and create_time &lt;= #{testDate2}
+            </if>
+            and state = #{state} and deleted = 0
+        </where>
+        order by id DESC
+    </select>
+
+    <select id="findArticlesByPage" resultType="com.blllf.blogease.pojo.Article">
+        select article.* from article
+        join user on article.create_user = user.id and article.category_id = #{categoryId}
+        <where>
+            <if test="username != null and username != '' ">
+               and username like #{username}
+            </if>
+            <if test="title != null and title != '' ">
+                and title like #{title}
+            </if>
+            and state = '已发布' and deleted = 0
+        </where>
+        order by article.id DESC
+    </select>
+
+
+    <!--<select id="selectNumAndRank" resultType="com.blllf.blogease.pojo.dto.NumAndRankByAuthor">
+        select article.create_user , count(*) as article_count,
+               RANK() OVER (ORDER BY COUNT(*) DESC) as peopleRank
+               from article where deleted = 0
+        group by create_user ORDER BY article_count DESC
+    </select>-->
+    <select id="selectNumAndRank" resultType="com.blllf.blogease.pojo.dto.NumAndRankByAuthor">
+        SELECT a.create_user,
+            COUNT(a.id) AS article_count,
+            COALESCE(SUM(ul.number), 0) AS number_likes,
+            RANK() OVER (ORDER BY COUNT(a.id) DESC) AS peopleRank
+        FROM article a LEFT JOIN userlikecount ul ON a.id = ul.likedUserId
+        WHERE a.deleted = 0 GROUP BY a.create_user
+        ORDER BY number_likes DESC;
+    </select>
+
+    <select id="selectArticlesOfLogicDeleted2" resultType="com.blllf.blogease.pojo.Article">
+        select * from article
+        <where>
+            <if test="categoryId != null">
+                category_id = #{categoryId}
+            </if>
+            <if test="date1 != null and date1 != '' ">
+                and create_time >= #{date1}
+            </if>
+            <if test="date2 != null and date2 != '' ">
+                and create_time &lt;= #{date2}
+            </if>
+            and deleted = 1
+        </where>
+        order by id DESC
+    </select>
+
+    <select id="findAllArticlesByCN" resultType="com.blllf.blogease.pojo.dto.ArticleAndUser">
+        SELECT a.*, u.user_pic, u.username , u.nickname, IFNULL(ul.number, 0) AS number,
+        (SELECT COUNT(*) FROM comment c WHERE c.article_id = a.id) AS comment_count
+        FROM article a
+        JOIN user u ON a.create_user = u.id
+        JOIN category c ON a.category_id = c.id
+        LEFT JOIN userlikecount ul ON a.id = ul.likedUserId
+        WHERE c.category_name = #{categoryName}
+        AND a.deleted = 0
+        ORDER BY a.update_time DESC
+        LIMIT #{limit} OFFSET #{offset};
+    </select>
+
+    <!--头条搜索-->
+    <select id="hostSearch2" resultType="com.blllf.blogease.pojo.Article">
+        SELECT *
+        FROM article
+        WHERE deleted = 0
+          AND update_time >= DATE_SUB(CURDATE(), INTERVAL 7 MONTH)
+        ORDER BY update_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!--热点数据-->
+    <select id="hotpotFind" resultType="com.blllf.blogease.pojo.Article">
+        SELECT a.*
+        FROM article a
+        JOIN userlikecount u ON a.id = u.likedUserId
+        WHERE a.update_time &gt;= DATE_SUB(CURRENT_DATE, INTERVAL 12 MONTH)
+        ORDER BY u.number DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+
+    <!--推荐-->
+    <select id="recommendArticleSearch" resultType="com.blllf.blogease.pojo.dto.ArticleAndUser">
+        SELECT a.*, u.username
+        FROM article a JOIN user u ON a.create_user = u.id
+        WHERE a.deleted = 0
+        ORDER BY a.create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="findArticleAndLikeCount" resultType="com.blllf.blogease.pojo.dto.ArticleAndLikeCount">
+        SELECT a.id, a.title,a.content,a.update_time,a.cover_img,a.deleted,ulc.number,
+        (SELECT COUNT(*) FROM comment c WHERE c.article_id = a.id) AS comment_count,
+        (SELECT COUNT(*) FROM articlecollection ac WHERE ac.article_id = a.id) AS collection_count
+        FROM article a
+        LEFT JOIN userlikecount ulc ON a.id = ulc.likedUserId
+        <where>
+            a.create_user = #{createUser}
+            <if test="deleted != null">
+                AND a.deleted = #{deleted}
+            </if>
+        </where>
+        ORDER BY a.update_time DESC
+    </select>
+
+
+</mapper>

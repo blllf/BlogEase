@@ -1,0 +1,89 @@
+---
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/spring
+    username: root
+    password: wakeup0608
+  data:
+    redis:
+      port: 6379
+      #host: 192.168.139.135
+      host: localhost
+  rabbitmq:
+    host: 192.168.11.140
+    port: 5672
+    username: blllf
+    password: 123456
+    virtual-host: /
+  config:
+    activate:
+      on-profile: dev
+server:
+  port: 8081
+#访问可视化页面路径 IP:5601
+elasticsearch:
+  host: 192.168.139.135
+  port: 9200
+#logging:
+#  file:
+#    path:
+---
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://8.147.232.47:3306/aliyun_spring
+    username: root
+    password: Wakeup0608;
+  data:
+    redis:
+      port: 6379
+      host: 8.147.232.47
+  config:
+    activate:
+      on-profile: pro
+server:
+  port: 8080
+---
+# MyBatis 会自动将数据库字段名中的下划线（_）转换为 Java 对象属性名的驼峰命名法。
+# mybatis:
+#  configuration:
+#    map-underscore-to-camel-case: true
+
+mybatis-plus:
+  configuration:
+ #   log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+#  global-config:
+#    db-config:
+#      logic-delete-value: 1
+#      logic-not-delete-value: 0
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB          #允许单个文件最大大小为 5MB
+      max-request-size: 5MB      #整个请求的最大大小为 5MB
+  profiles:
+    active: dev
+  application:
+    name: "BlogEase后端"
+
+# springdoc-openapi项目配置
+springdoc:
+  swagger-ui:
+    #自定义swagger前端请求路径,输入http:localhost:8081/swagger-ui.html会自动重定向到swagger页面
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs  #swagger后端请求地址
+    enabled: true   #是否开启文档功能
+  group-configs: #分组配置,可配置多个分组
+    - group: 'default'             #分组名称
+      paths-to-match: '/**'        #配置需要匹配的路径
+      packages-to-scan: com.blllf.blogease    #配置要扫描包的路径,一般配置到启动类所在的包名
+
+
+
+
